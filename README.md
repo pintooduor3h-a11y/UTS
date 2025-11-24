@@ -1,10 +1,10 @@
-# Fractionalize BSV Overlay API
+# Fractionalize RWAs BSV Overlay API
 
-A REST API server for the Fractionalize BSV Overlay service, providing three main endpoints for React frontend integration.
+A REST API server for the UTS BSV Overlay service, providing three main endpoints for React frontend integration.
 
 ## Overview
 
-This API provides access to the Fractionalize overlay service data stored in MongoDB. It exposes three main endpoints:
+This API provides access to the UTS overlay service data stored in MongoDB. It exposes three main endpoints:
 
 1. **Main Page** - Dashboard data with statistics and recent records
 2. **User** - Query interface for searching and filtering records
