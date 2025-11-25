@@ -31,7 +31,13 @@ async function connectToDatabase(): Promise<Db> {
     throw new Error('MONGO_URL environment variable is not set')
   }
 
-  const client = new MongoClient(mongoUrl)
+  const client = new MongoClient(mongoUrl, {
+    tls: true,
+    tlsAllowInvalidCertificates: true,
+    tlsAllowInvalidHostnames: true,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 10000,
+  })
   await client.connect()
   console.log('Connected to MongoDB')
 

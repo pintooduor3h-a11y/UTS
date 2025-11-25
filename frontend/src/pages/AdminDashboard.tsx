@@ -19,6 +19,7 @@ interface TokenData {
   id: string
   fileHash: string
   peggingRate: string
+  shareValue: string
   id2: string
   transactionType: string
 }
@@ -33,6 +34,7 @@ function AdminDashboard() {
   const [numShares, setNumShares] = useState('1000') // Number of shares
   const [sliderValue, setSliderValue] = useState(1) // Slider position (0-5 for 0, 1k, 1M, 1B, 1T, 1Q)
   const [peggingRate, setPeggingRate] = useState('1') // BTC/fiat pegging rate
+  const [shareValue, setShareValue] = useState('1.00') // Share value (positive real numbers only)
   const [transactionType, setTransactionType] = useState('0x01') // Issuance/payment/redemption
   const [contractDuration, setContractDuration] = useState('') // Duration for non-fiat currency contracts
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -44,12 +46,10 @@ function AdminDashboard() {
 
   // Calculated fees
   const baseIssuerFee = 12.00
-  const unitsFeeDiscount = 0.00
-  const unitsFeeActive = 0.00
-  const oneTimeFees = 0.00
+  const oneTimeFees = (parseFloat(numShares) || 0) * 40
   const issuerOpsFees = 0.00
   const totalPerCoupon = 0.00
-  const pricePerThousand = 0.008
+  const pricePerThousand = 40000
 
   const handleLogout = () => {
     navigate('/')
@@ -204,6 +204,7 @@ function AdminDashboard() {
       contractDuration: contractType !== '0x00000001' ? contractDuration : undefined,
       fileHash,
       peggingRate,
+      shareValue, // no need
       transactionType
     }
 
@@ -302,6 +303,23 @@ function AdminDashboard() {
               </select>
             </div>
 
+            {contractType === '0x00000001' && (
+              <div className="form-field">
+                <label>FIAT DENOMINATION</label>
+                <select
+                  value={fiatDenomination}
+                  onChange={(e) => setFiatDenomination(e.target.value)}
+                  className="select-input"
+                >
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="PHP">PHP - Philippine Peso</option>
+                  <option value="IDR">IDR - Indonesian Rupiah</option>
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                </select>
+              </div>
+            )}
+
             <div className="form-field">
               <label>CONTRACT POINTER</label>
               <input
@@ -314,34 +332,16 @@ function AdminDashboard() {
             </div>
 
             <div className="form-field">
-              {contractType === '0x00000001' ? (
-                <>
-                  <label>FIAT DENOMINATION</label>
-                  <select
-                    value={fiatDenomination}
-                    onChange={(e) => setFiatDenomination(e.target.value)}
-                    className="select-input"
-                  >
-                    <option value="CAD">CAD - Canadian Dollar</option>
-                    <option value="PHP">PHP - Philippine Peso</option>
-                    <option value="IDR">IDR - Indonesian Rupiah</option>
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                  </select>
-                </>
-              ) : (
-                <>
-                  <label>NUMB SHARES</label>
-                  <input
-                    type="number"
-                    value={numShares}
-                    onChange={(e) => handleNumSharesChange(e.target.value)}
-                    className="number-input"
-                    placeholder="Number of shares"
-                    min="0"
-                  />
-                </>
-              )}
+              <label>TRANSACTION TYPE</label>
+              <select
+                value={transactionType}
+                onChange={(e) => setTransactionType(e.target.value)}
+                className="select-input"
+              >
+                <option value="0x01">Issuance</option>
+                <option value="0x02">Payment</option>
+                <option value="0x03">Redemption</option>
+              </select>
             </div>
 
             <div className="form-field">
@@ -358,16 +358,47 @@ function AdminDashboard() {
             </div>
 
             <div className="form-field">
-              <label>TRANSACTION TYPE</label>
-              <select
-                value={transactionType}
-                onChange={(e) => setTransactionType(e.target.value)}
-                className="select-input"
-              >
-                <option value="0x01">Issuance</option>
-                <option value="0x02">Payment</option>
-                <option value="0x03">Redemption</option>
-              </select>
+              <label>SHARE VALUE</label>
+              <input
+                type="number"
+                value={shareValue}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || parseFloat(value) >= 0) {
+                    setShareValue(value)
+
+                    // If share value is less than 1, automatically set numShares = 1 / shareValue
+                    const numericValue = parseFloat(value)
+                    if (!isNaN(numericValue) && numericValue > 0 && numericValue < 1) {
+                      const calculatedShares = Math.max(1, Math.round(1 / numericValue))
+                      setNumShares(calculatedShares.toString())
+
+                      // Update slider position to match the calculated shares
+                      if (calculatedShares < 500000) setSliderValue(1)
+                      else if (calculatedShares < 500000000) setSliderValue(2)
+                      else if (calculatedShares < 500000000000) setSliderValue(3)
+                      else if (calculatedShares < 500000000000000) setSliderValue(4)
+                      else setSliderValue(5)
+                    }
+                  }
+                }}
+                className="number-input"
+                min="0"
+                step="0.01"
+                placeholder="Share value"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>NUM SHARES</label>
+              <input
+                type="number"
+                value={numShares}
+                onChange={(e) => handleNumSharesChange(e.target.value)}
+                className="number-input"
+                placeholder="Number of shares"
+                min="0"
+              />
             </div>
 
             {contractType !== '0x00000001' && (
@@ -390,20 +421,6 @@ function AdminDashboard() {
               </div>
             </div>
 
-            {contractType === '0x00000001' && (
-              <div className="form-field">
-                <label>NUM SHARES</label>
-                <input
-                  type="number"
-                  value={numShares}
-                  onChange={(e) => handleNumSharesChange(e.target.value)}
-                  className="number-input"
-                  placeholder="Number of shares"
-                  min="0"
-                />
-              </div>
-            )}
-
             <div className="slider-field">
               <input
                 type="range"
@@ -423,10 +440,7 @@ function AdminDashboard() {
               </div>
             </div>
 
-            <div className="slider-value">
-              <span className="slider-price">${pricePerThousand.toFixed(3)} per thousand per {getContractTypeLabel()}</span>
-
-            </div>
+            
 
             <div className="file-upload-section">
               <input
@@ -441,29 +455,42 @@ function AdminDashboard() {
               </label>
             </div>
 
+<div className="slider-value">
+              <span className="slider-price">{pricePerThousand.toFixed(0)} sats per thousand per {getContractTypeLabel()}</span>
+
+            </div>
+
+
             <div className="fees-breakdown">
               <h3 className="breakdown-title">ESTIMATED FEES</h3>
+
+              <div className="fee-row-total">
+                <span>Total sats needed for the Issuer</span>
+                <span className="fee-value-total">
+                  {(() => {
+                    const shares = parseFloat(numShares) || 0
+                    const rate = parseFloat(peggingRate) || 0
+                    const totalSats = rate === 0 ? shares : shares * rate
+                    return totalSats.toLocaleString('en-US', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2
+                    })
+                  })()}
+                </span>
+              </div>
+
+              <div className="fee-row-spacer"></div>
 
               <div className="fee-row">
                 <span>Base issuer operations fee</span>
                 <span className="fee-value">${formatCurrency(baseIssuerFee)} / mo.</span>
               </div>
 
-              <div className="fee-row">
-                <span>Units outstanding fee, lower tiers</span>
-                <span className="fee-value">${formatCurrency(unitsFeeDiscount)} / mo.</span>
-              </div>
-
-              <div className="fee-row">
-                <span>Units outstanding fee, active tier</span>
-                <span className="fee-value">${formatCurrency(unitsFeeActive)} / mo.</span>
-              </div>
-
               <div className="fee-row-spacer"></div>
 
               <div className="fee-row">
                 <span>Total one-time issuance action fees, in BSV</span>
-                <span className="fee-value">${formatCurrency(oneTimeFees)}</span>
+                <span className="fee-value">{oneTimeFees} sats</span>
               </div>
 
               <div className="fee-row">
